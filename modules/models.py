@@ -72,6 +72,7 @@ def load_model(model_name, loader=None):
         'AutoGPTQ': AutoGPTQ_loader,
         'GPTQ-for-LLaMa': GPTQ_loader,
         'llama.cpp': llamacpp_loader,
+        'RAG_CUSTOM': my_custom_loader,
         'llamacpp_HF': llamacpp_HF_loader,
         'ExLlamav2': ExLlamav2_loader,
         'ExLlamav2_HF': ExLlamav2_HF_loader,
@@ -150,6 +151,15 @@ def huggingface_loader(model_name):
 
     if 'chatglm' in model_name.lower():
         LoaderClass = AutoModel
+    elif 'llava' in model_name.lower():
+        from transformers import LlamaConfig, LlamaForCausalLM
+        class LlavaConfig(LlamaConfig):
+            model_type = "llava"
+        class LlavaLlamaForCausalLM(LlamaForCausalLM):
+            config_class = LlavaConfig
+        AutoConfig.register("llava", LlavaConfig, exist_ok=True)
+        AutoModelForCausalLM.register(LlavaConfig, LlavaLlamaForCausalLM, exist_ok=True)
+        LoaderClass = LlavaLlamaForCausalLM
     else:
         if config.to_dict().get('is_encoder_decoder', False):
             LoaderClass = AutoModelForSeq2SeqLM
@@ -261,6 +271,19 @@ def huggingface_loader(model_name):
 
 def llamacpp_loader(model_name):
     from modules.llamacpp_model import LlamaCppModel
+
+    path = Path(f'{shared.args.model_dir}/{model_name}')
+    if path.is_file():
+        model_file = path
+    else:
+        model_file = list(Path(f'{shared.args.model_dir}/{model_name}').glob('*.gguf'))[0]
+
+    logger.info(f"llama.cpp weights detected: \"{model_file}\"")
+    model, tokenizer = LlamaCppModel.from_pretrained(model_file)
+    return model, tokenizer
+
+def my_custom_loader(model_name):
+    from modules.my_rag_model import LlamaCppModel
 
     path = Path(f'{shared.args.model_dir}/{model_name}')
     if path.is_file():

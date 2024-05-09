@@ -155,6 +155,7 @@ def get_image_cache(path):
 
 def generate_instruct_html(history):
     output = f'<style>{instruct_css}</style><div class="chat" id="chat"><div class="messages">'
+    print("My own print-> ", len(history), history)
     for i, _row in enumerate(history):
         row = [convert_to_markdown_wrapped(entry, use_cache=i != len(history) - 1) for entry in _row]
 

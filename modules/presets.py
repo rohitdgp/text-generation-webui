@@ -156,7 +156,7 @@ def remove_defaults(state):
     data = {k: state[k] for k in presets_params()}
 
     for k in list(data.keys()):
-        if data[k] == defaults[k]:
+        if data[k] == defaults[k] and k != 'sampler_priority':
             del data[k]
 
     return data
