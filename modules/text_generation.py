@@ -410,6 +410,7 @@ def generate_reply_custom(question, original_question, seed, state, stopping_str
     """
     For models that do not use the transformers library for sampling
     """
+    print("LOLOLOLOLOL 12121", state)
     seed = set_manual_seed(state['seed'])
 
     t0 = time.time()
