@@ -1,25 +1,23 @@
+import os
 import re
 from functools import partial
 
 import numpy as np
 import torch
-
+from huggingface_hub.hf_api import HfFolder
+from langchain.callbacks.manager import CallbackManager
+from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+from langchain.chains import RetrievalQA
+# from langchain.embeddings.
+from langchain.embeddings.huggingface import HuggingFaceEmbeddings
+from langchain.vectorstores.neo4j_vector import Neo4jVector
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+from llama_cpp import Llama
 from modules import RoPE, llama_cpp_python_hijack, shared
 from modules.callbacks import Iteratorize
 from modules.logging_colors import logger
 from modules.text_generation import get_max_prompt_length
-import os
-from langchain.vectorstores.neo4j_vector import Neo4jVector
-# from langchain.embeddings.
-from langchain.embeddings.huggingface import HuggingFaceEmbeddings
-from llama_cpp import Llama
-from langchain.chains import RetrievalQA
-from huggingface_hub.hf_api import HfFolder
-
-from langchain.callbacks.manager import CallbackManager
-from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
-from langchain_core.runnables import RunnablePassthrough
-from langchain_core.output_parsers import StrOutputParser
 
 try:
     import llama_cpp
@@ -40,7 +38,7 @@ token = "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"
 
 HfFolder.save_token(token)
 
-URI = "neo4j://192.168.0.115:7687"
+URI = "neo4j://localhost:7687"
 AUTH = ("neo4j", "password")
 
 def llama_cpp_lib():
