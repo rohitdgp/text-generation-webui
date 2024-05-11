@@ -1,13 +1,12 @@
 import copy
 from pathlib import Path
 
+import extensions
 import gradio as gr
 import torch
 import yaml
-from transformers import is_torch_xpu_available
-
-import extensions
 from modules import shared
+from transformers import is_torch_xpu_available
 
 with open(Path(__file__).resolve().parent / '../css/NotoSans/stylesheet.css', 'r') as f:
     css = f.read()
@@ -104,7 +103,7 @@ def list_model_elements():
         'no_offload_kqv',
         'row_split',
         'tensorcores',
-        'flash-attn',
+        # 'flash-attn',
         'streaming_llm',
         'attention_sink_size',
         'hqq_backend',
