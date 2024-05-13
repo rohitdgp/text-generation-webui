@@ -12,7 +12,8 @@ from langchain.chains import RetrievalQA
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from langchain.vectorstores.neo4j_vector import Neo4jVector
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.runnables import (ConfigurableField, RunnableParallel,
+                                      RunnablePassthrough)
 from llama_cpp import Llama
 from modules import RoPE, llama_cpp_python_hijack, shared
 from modules.callbacks import Iteratorize
@@ -228,10 +229,58 @@ class LlamaCppModel:
             search_type = "similarity",
             search_kwargs = {"k":6}
         )
+        
+        retriever1_advanced = self.vector_index.as_retriever(
+            search_type = "similarity_score_threshold",
+            search_kwargs = {"k":6, 'score_threshold': 1.0}
+        ).configurable_alternatives(
+            ConfigurableField(id="strategy"),
+            default_key="typical_rag",
+            parent_strategy=retriever2,
+            hypothetical_questions=retriever3,
+            # summary_strategy=summary_vectorstore.as_retriever(),
+        )
+        
+        retriever2_advanced = self.vector_index2.as_retriever(
+            search_type = "similarity_score_threshold",
+            search_kwargs = {"k":6, 'score_threshold': 1.0}
+        ).configurable_alternatives(
+            ConfigurableField(id="strategy"),
+            default_key="typical_rag",
+            parent_strategy=retriever3,
+            hypothetical_questions=retriever1,
+            # summary_strategy=summary_vectorstore.as_retriever(),
+        )
+        
+        retriever3_advanced = self.vector_index3.as_retriever(
+            search_type = "similarity_score_threshold",
+            search_kwargs = {"k":6, 'score_threshold': 1.0}
+        ).configurable_alternatives(
+            ConfigurableField(id="strategy"),
+            default_key="typical_rag",
+            parent_strategy=retriever1,
+            hypothetical_questions=retriever2,
+            # summary_strategy=summary_vectorstore.as_retriever(),
+        )
 
+        
+        self.rag_chain1 = (
+            RunnablePassthrough.assign(
+                context = contextualized_question | retriever1_advanced | format_docs
+            )
+            | get_chat_template 
+            | generate_with_configs
+        )
         self.rag_chain2 = (
             RunnablePassthrough.assign(
-                context = contextualized_question | retriever2 | format_docs
+                context = contextualized_question | retriever2_advanced | format_docs
+            )
+            | get_chat_template 
+            | generate_with_configs
+        )
+        self.rag_chain3 = (
+            RunnablePassthrough.assign(
+                context = contextualized_question | retriever3_advanced | format_docs
             )
             | get_chat_template 
             | generate_with_configs
@@ -261,10 +310,100 @@ class LlamaCppModel:
             else:
                 self.grammar = None
 
-    def generate(self, prompt, state, callback=None):
-        print("LOLOLOLOLOL -----------------------", prompt)
+    def classify(self, prompt, state):
+        prompt = """
+            [INST] <<SYS>>
+                You are doing a classification job. Classify the given statement into one of the following categories drug, disease and protein. Do not response with anything but the classified category.
+            <<SYS>>
+            
+            Classify the given statement/question into either drug, disease or protein. `{prompt}`
+            [/INST]
+        """.format(prompt=prompt)
         LogitsProcessorList = llama_cpp_lib().LogitsProcessorList
         prompt = prompt if type(prompt) is str else prompt.decode()
+        
+        # Handle truncation
+        prompt = self.encode(prompt)
+        prompt = prompt[-get_max_prompt_length(state):]
+        prompt = self.decode(prompt)
+
+        self.load_grammar(state['grammar_string'])
+        logit_processors = LogitsProcessorList()
+        if state['ban_eos_token']:
+            logit_processors.append(partial(ban_eos_logits_processor, self.model.token_eos()))
+
+        if state['custom_token_bans']:
+            to_ban = [int(x) for x in state['custom_token_bans'].split(',')]
+            if len(to_ban) > 0:
+                logit_processors.append(partial(custom_token_ban_logits_processor, to_ban))
+
+            
+        print("################################ only the prompt -> ", prompt)
+        completion_chunks = self.model.create_completion(
+            prompt=prompt,
+            max_tokens=state['max_new_tokens'],
+            temperature=state['temperature'],
+            top_p=state['top_p'],
+            min_p=state['min_p'],
+            typical_p=state['typical_p'],
+            frequency_penalty=state['frequency_penalty'],
+            presence_penalty=state['presence_penalty'],
+            repeat_penalty=state['repetition_penalty'],
+            top_k=state['top_k'],
+            # stream=True,
+            seed=int(state['seed']) if state['seed'] != -1 else None,
+            tfs_z=state['tfs'],
+            mirostat_mode=int(state['mirostat_mode']),
+            mirostat_tau=state['mirostat_tau'],
+            mirostat_eta=state['mirostat_eta'],
+            logits_processor=logit_processors,
+            grammar=self.grammar
+        )
+
+        print("completion_chunks ", completion_chunks)
+        output = completion_chunks["choices"][0]["text"]
+        # for completion_chunk in completion_chunks:
+        #     if shared.stop_everything:
+        #         break
+            
+        #     print("Inside: ", completion_chunk)
+        #     delta = completion_chunk["choices"][0]["delta"]
+        #     # print("output text: ", text)
+        #     text = ""
+        #     if "content" in delta:
+        #         text = delta["content"]
+            
+        #     output += text
+        #     # if callback:
+        #     #     callback(text)
+
+        dc = output.count("drug")
+        pc = output.count("protein")
+        dsc = output.count("disease")
+        
+        temp_max = 0
+        if dc > pc:
+            classified_obj = "drug"
+            temp_max = dc
+        else:
+            classified_obj = "protein"
+            temp_max = pc
+        
+        if dsc > temp_max:
+            classified_obj = "disease"
+            
+        print("classified: ", output)
+        return classified_obj
+        
+        
+    def generate(self, prompt, state, callback=None):
+        # Run the classifier model to get the classification from given prompt
+        # internal_history = state.get("history", {}).get("internal", [])
+        classified_object = self.classify(state.get("textbox"), state)
+        print("LOLOLOLOLOL -----------------------", prompt, classified_object)
+        LogitsProcessorList = llama_cpp_lib().LogitsProcessorList
+        prompt = prompt if type(prompt) is str else prompt.decode()
+        
 
         # Handle truncation
         prompt = self.encode(prompt)
@@ -303,12 +442,28 @@ class LlamaCppModel:
         # )
             
         print("################################ only the prompt -> ", prompt)
-        completion_chunks = self.rag_chain2.invoke(
-            {
-            "question": prompt,
-            "chat_history": []
-        }
-        )
+        
+        if classified_object == "protein":
+            completion_chunks = self.rag_chain1.invoke(
+                {
+                    "question": prompt,
+                    "chat_history": []
+                }
+            )
+        elif classified_object == "drug":
+            completion_chunks = self.rag_chain2.invoke(
+                {
+                    "question": prompt,
+                    "chat_history": []
+                }
+            )
+        else:
+            completion_chunks = self.rag_chain3.invoke(
+                {
+                    "question": prompt,
+                    "chat_history": []
+                }
+            )
 
         output = ""
         for completion_chunk in completion_chunks:

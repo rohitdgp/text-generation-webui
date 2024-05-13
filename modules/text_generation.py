@@ -6,28 +6,21 @@ import random
 import time
 import traceback
 
+import modules.shared as shared
 import numpy as np
 import torch
 import transformers
-from transformers import (
-    LogitsProcessorList,
-    is_torch_npu_available,
-    is_torch_xpu_available
-)
-
-import modules.shared as shared
 from modules.cache_utils import process_llamacpp_cache
-from modules.callbacks import (
-    Iteratorize,
-    Stream,
-    _StopEverythingStoppingCriteria
-)
+from modules.callbacks import (Iteratorize, Stream,
+                               _StopEverythingStoppingCriteria)
 from modules.extensions import apply_extensions
 from modules.grammar.grammar_utils import initialize_grammar
 from modules.grammar.logits_process import GrammarConstrainedLogitsProcessor
 from modules.html_generator import generate_basic_html
 from modules.logging_colors import logger
 from modules.models import clear_torch_cache
+from transformers import (LogitsProcessorList, is_torch_npu_available,
+                          is_torch_xpu_available)
 
 
 def generate_reply(*args, **kwargs):
@@ -65,6 +58,8 @@ def _generate_reply(question, state, stopping_strings=None, is_chat=False, escap
         state = apply_extensions('state', state)
         question = apply_extensions('input', question, state)
 
+    print("###### -> ", question, original_question)
+    
     # Find the stopping strings
     all_stop_strings = []
     for st in (stopping_strings, state['custom_stopping_strings']):
