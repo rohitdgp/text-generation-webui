@@ -208,7 +208,7 @@ class LlamaCppModel:
 
 
         def contextualized_question(input: dict):
-            return input["question"]
+            return input["question"].replace("/", " ")
             if input.get("chat_history"):
                 return contextualize_q_chain
             else:
@@ -227,7 +227,7 @@ class LlamaCppModel:
 
         retriever3 = self.vector_index3.as_retriever(
             search_type = "similarity",
-            search_kwargs = {"k":6}
+            search_kwargs = {"k":6, 'score_threshold': 0.5}
         )
         
         retriever1_advanced = self.vector_index.as_retriever(
@@ -313,8 +313,8 @@ class LlamaCppModel:
     def classify(self, prompt, state):
         prompt = """
             [INST] <<SYS>>
-                You are doing a classification job. Classify the given statement into one of the following categories drug, disease and protein. Do not response with anything but the classified category.
-            <<SYS>>
+                You are doing a classification job. You will classify the given statement into one of the following categories drug, disease and protein based on the instruction provided. Classify into only one category primarily. Do not explain or respond with anything but the classified category.
+            <</SYS>>
             
             Classify the given statement/question into either drug, disease or protein. `{prompt}`
             [/INST]
@@ -362,20 +362,6 @@ class LlamaCppModel:
 
         print("completion_chunks ", completion_chunks)
         output = completion_chunks["choices"][0]["text"]
-        # for completion_chunk in completion_chunks:
-        #     if shared.stop_everything:
-        #         break
-            
-        #     print("Inside: ", completion_chunk)
-        #     delta = completion_chunk["choices"][0]["delta"]
-        #     # print("output text: ", text)
-        #     text = ""
-        #     if "content" in delta:
-        #         text = delta["content"]
-            
-        #     output += text
-        #     # if callback:
-        #     #     callback(text)
 
         dc = output.count("drug")
         pc = output.count("protein")
