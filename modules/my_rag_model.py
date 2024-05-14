@@ -320,7 +320,7 @@ class LlamaCppModel:
             | generate_with_configs
         )
         
-        retriever_full = RetrieverCustom(retriever1=retriever1_advanced, retriever2=retriever2_advanced, retriever3=retriever3_advanced)
+        retriever_full = RetrieverCustom(r1=retriever1_advanced, r2=retriever2_advanced, r3=retriever3_advanced)
         
         self.rag_full = (
             RunnablePassthrough.assign(
