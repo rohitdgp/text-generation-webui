@@ -452,27 +452,34 @@ class LlamaCppModel:
             
         print("################################ only the prompt -> ", prompt)
         
-        if classified_object == "protein":
-            completion_chunks = self.rag_chain1.invoke(
-                {
-                    "question": prompt,
-                    "chat_history": []
-                }
-            )
-        elif classified_object == "drug":
-            completion_chunks = self.rag_chain2.invoke(
-                {
-                    "question": prompt,
-                    "chat_history": []
-                }
-            )
-        else:
-            completion_chunks = self.rag_chain3.invoke(
-                {
-                    "question": prompt,
-                    "chat_history": []
-                }
-            )
+        # if classified_object == "protein":
+        #     completion_chunks = self.rag_chain1.invoke(
+        #         {
+        #             "question": prompt,
+        #             "chat_history": []
+        #         }
+        #     )
+        # elif classified_object == "drug":
+        #     completion_chunks = self.rag_chain2.invoke(
+        #         {
+        #             "question": prompt,
+        #             "chat_history": []
+        #         }
+        #     )
+        # else:
+        #     completion_chunks = self.rag_chain3.invoke(
+        #         {
+        #             "question": prompt,
+        #             "chat_history": []
+        #         }
+        #     )
+        
+        completion_chunks = self.rag_full.invoke(
+            {
+                "question": prompt,
+                "chat_history": []
+            }
+        )
 
         output = ""
         for completion_chunk in completion_chunks:
