@@ -84,13 +84,15 @@ retriever3 = None
 
 class RetrieverCustom(RunnableSerializable[RetrieverInput, RetrieverOutput], ABC):
     
-    def __init__(self, retriever1 = VectorStoreRetriever, retriever2 = VectorStoreRetriever, retriever3 = VectorStoreRetriever):
-        retriever1 = retriever1
-        retriever2 = retriever2
-        retriever3 = retriever3
+    def __init__(self, r1 = VectorStoreRetriever, r2 = VectorStoreRetriever, r3 = VectorStoreRetriever):
+        global retriever1, retriever2, retriever3
+        retriever1 = r1
+        retriever2 = r2
+        retriever3 = r3
         
     def invoke(self, input, history):
         print("Within custom: ", history)
+        global retriever1, retriever2, retriever3
         docs = retriever1.invoke(input)
         docs += retriever2.invoke(input)
         docs += retriever3.invoke(input)
