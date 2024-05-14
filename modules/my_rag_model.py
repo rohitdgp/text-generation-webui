@@ -1,6 +1,9 @@
 import os
 import re
+from abc import ABC, abstractmethod
 from functools import partial
+from inspect import signature
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import numpy as np
 import torch
@@ -11,9 +14,14 @@ from langchain.chains import RetrievalQA
 # from langchain.embeddings.
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from langchain.vectorstores.neo4j_vector import Neo4jVector
+from langchain_core._api import deprecated
+from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import (ConfigurableField, RunnableParallel,
-                                      RunnablePassthrough)
+from langchain_core.runnables import (ConfigurableField, Runnable,
+                                      RunnableConfig, RunnableParallel,
+                                      RunnablePassthrough,
+                                      RunnableSerializable, ensure_config)
+from langchain_core.vectorstores import VectorStoreRetriever
 from llama_cpp import Llama
 from modules import RoPE, llama_cpp_python_hijack, shared
 from modules.callbacks import Iteratorize
@@ -65,8 +73,17 @@ def custom_token_ban_logits_processor(token_ids, input_ids, logits):
     return logits
 
 
-class RetrieverCustom:
-    def __init__(self, retriever1 = None, retriever2 = None, retriever3 = None):
+RetrieverInput = str
+RetrieverOutput = List[Document]
+RetrieverLike = Runnable[RetrieverInput, RetrieverOutput]
+RetrieverOutputLike = Runnable[Any, RetrieverOutput]
+
+class RetrieverCustom(RunnableSerializable[RetrieverInput, RetrieverOutput], ABC):
+    retriever1: VectorStoreRetriever
+    retriever2: VectorStoreRetriever
+    retriever3: VectorStoreRetriever
+    
+    def __init__(self, retriever1 = VectorStoreRetriever, retriever2 = VectorStoreRetriever, retriever3 = VectorStoreRetriever):
         self.retriever1 = retriever1
         self.retriever2 = retriever2
         self.retriever3 = retriever3
