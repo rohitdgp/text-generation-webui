@@ -89,7 +89,8 @@ class RetrieverCustom(RunnableSerializable[RetrieverInput, RetrieverOutput], ABC
         retriever2 = retriever2
         retriever3 = retriever3
         
-    def invoke(self, input):
+    def invoke(self, input, history):
+        print("Within custom: ", history)
         docs = retriever1.invoke(input)
         docs += retriever2.invoke(input)
         docs += retriever3.invoke(input)
