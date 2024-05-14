@@ -65,6 +65,19 @@ def custom_token_ban_logits_processor(token_ids, input_ids, logits):
     return logits
 
 
+class RetrieverCustom:
+    def __init__(self, retriever1 = None, retriever2 = None, retriever3 = None):
+        self.retriever1 = retriever1
+        self.retriever2 = retriever2
+        self.retriever3 = retriever3
+        
+    def invoke(self, input):
+        docs = self.retriever1.invoke(input)
+        docs += self.retriever2.invoke(input)
+        docs += self.retriever3.invoke(input)
+        
+        return docs
+
 class LlamaCppModel:
     def __init__(self):
         self.initialized = False
@@ -281,6 +294,16 @@ class LlamaCppModel:
         self.rag_chain3 = (
             RunnablePassthrough.assign(
                 context = contextualized_question | retriever3_advanced | format_docs
+            )
+            | get_chat_template 
+            | generate_with_configs
+        )
+        
+        retriever_full = RetrieverCustom(retriever1=retriever1_advanced, retriever2=retriever2_advanced, retriever3=retriever3_advanced)
+        
+        self.rag_full = (
+            RunnablePassthrough.assign(
+                context = contextualized_question | retriever_full | format_docs
             )
             | get_chat_template 
             | generate_with_configs
