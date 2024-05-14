@@ -78,20 +78,21 @@ RetrieverOutput = List[Document]
 RetrieverLike = Runnable[RetrieverInput, RetrieverOutput]
 RetrieverOutputLike = Runnable[Any, RetrieverOutput]
 
+retriever1 = None
+retriever2 = None
+retriever3 = None
+
 class RetrieverCustom(RunnableSerializable[RetrieverInput, RetrieverOutput], ABC):
-    retriever1: VectorStoreRetriever
-    retriever2: VectorStoreRetriever
-    retriever3: VectorStoreRetriever
     
     def __init__(self, retriever1 = VectorStoreRetriever, retriever2 = VectorStoreRetriever, retriever3 = VectorStoreRetriever):
-        self.retriever1 = retriever1
-        self.retriever2 = retriever2
-        self.retriever3 = retriever3
+        retriever1 = retriever1
+        retriever2 = retriever2
+        retriever3 = retriever3
         
     def invoke(self, input):
-        docs = self.retriever1.invoke(input)
-        docs += self.retriever2.invoke(input)
-        docs += self.retriever3.invoke(input)
+        docs = retriever1.invoke(input)
+        docs += retriever2.invoke(input)
+        docs += retriever3.invoke(input)
         
         return docs
 
@@ -425,8 +426,8 @@ class LlamaCppModel:
     def generate(self, prompt, state, callback=None):
         # Run the classifier model to get the classification from given prompt
         # internal_history = state.get("history", {}).get("internal", [])
-        classified_object = self.classify(state.get("textbox"), state)
-        print("LOLOLOLOLOL -----------------------", prompt, classified_object)
+        # classified_object = self.classify(state.get("textbox"), state)
+        # print("LOLOLOLOLOL -----------------------", prompt, classified_object)
         LogitsProcessorList = llama_cpp_lib().LogitsProcessorList
         prompt = prompt if type(prompt) is str else prompt.decode()
         
