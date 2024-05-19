@@ -83,20 +83,17 @@ retriever2 = None
 retriever3 = None
 
 class RetrieverCustom(RunnableSerializable[RetrieverInput, RetrieverOutput], ABC):
-    
     def __init__(self, r1 = VectorStoreRetriever, r2 = VectorStoreRetriever, r3 = VectorStoreRetriever):
         global retriever1, retriever2, retriever3
         retriever1 = r1
         retriever2 = r2
-        retriever3 = r3
-        
+        retriever3 = r3 
     def invoke(self, input, history):
         print("Within custom: ", history)
         global retriever1, retriever2, retriever3
         docs = retriever1.invoke(input)
         docs += retriever2.invoke(input)
         docs += retriever3.invoke(input)
-        
         return docs
 
 class LlamaCppModel:
@@ -161,6 +158,28 @@ class LlamaCppModel:
 
     def initialise_vector_indexes(self):
         em = HuggingFaceEmbeddings(model_name='BAAI/bge-large-en-v1.5')
+        
+        retrieval_query = """
+            MATCH (node)
+            OPTIONAL MATCH (node)-[e]-(m:drug)
+            WITH node, e, score, m
+            RETURN 
+            node {
+                details:{
+                    type: 'protein', 
+                    name: node.name, 
+                    full_name: node.description
+                }, 
+                drug_interactions:{
+                    drug: m.name, 
+                    description: m.description, 
+                    interaction: e.type
+                }
+            } as text, 
+            score, 
+            node{.source} as metadata
+        """
+       
         self.vector_index = Neo4jVector.from_existing_graph(
             em,
             url=URI,
@@ -172,6 +191,7 @@ class LlamaCppModel:
             text_node_properties=['name', 'description', 'source'],
             embedding_node_property='embedding',
             search_type='hybrid',
+            retrieval_query=retrieval_query
         )
 
         self.vector_index2 = Neo4jVector.from_existing_graph(
